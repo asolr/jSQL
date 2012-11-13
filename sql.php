@@ -69,15 +69,21 @@ class jSQL {
     
   public function query($sql) {
     mysql_select_db($this->database, $this->connection); // maybe should be a good idea to have a check if null
-  	if(!($this->result = mysql_query($sql, $this->connection))) {
-      $this->json = "\"MySQL Error " . mysql_errno() . " " . preg_replace('/["\']/', '', mysql_error()) . " (" . preg_replace('/["\']/', '', $sql) . ")\"";
+		if(!($this->result = mysql_query($sql, $this->connection))) {
+      $this->json = "[{\"Error\" : \" mysql_errno() " . mysql_errno() . " " . preg_replace('/["\']/', '', mysql_error()) . "\", \"Query\" : \"mysql_query()" . preg_replace('/["\']/', '', $sql) . "\"}]";
     } 
     if($this->result) {
       $this->json = "[";
       $index = 0;
       switch($this->fetch) {
         case "array":
-          while ($row = mysql_fetch_array($this->result)) {
+          while ($row = mysql_fetch_array($this->result, MYSQL_NUM)) {
+            $this->json .= json_encode($row) . ",";
+            $index++;
+          }
+        break;
+        case "assoc":
+          while ($row = mysql_fetch_array($this->result, MYSQL_ASSOC)) {
             $this->json .= json_encode($row) . ",";
             $index++;
           }
@@ -88,18 +94,30 @@ class jSQL {
             $index++;
           }
         break;
-        default: // "object" [{key : value}, ... ]
+        case "object":
           while ($row = mysql_fetch_object($this->result)) {
             $this->json .= json_encode($row) . ",";
             $index++;
-          }        
+          }
+        break;
+        default: 
+          while ($row = mysql_fetch_object($this->result)) {
+            $this->json .= json_encode($row) . ",";
+            $index++;
+          }
       }
-      $this->json[strlen($this->json)-1] = "]";
+      // standard mysql_query() with out anything special
+      if (strlen($this->json) > 1){
+        $this->json[strlen($this->json)-1] = "]"; // be careful about removing space or ,
+      }
+      else {
+        $this->json .= mysql_affected_rows() . "]"; 
+      } 
     }
     mysql_free_result($this->result); // TODO: maybe only one of these is needed
     mysql_close($this->connection);
     return $this->json;
-	}
+  }
 }
 
 ?>
