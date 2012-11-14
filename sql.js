@@ -115,11 +115,9 @@ SQL.prototype.table = function(table) {
   BUG: [{"FirstName" : ["a", "b", "c", "d"], "LastName" : "f"}]
 */
 
+// NOTE the query must be [{},...] not {}
 var JSON2SQL = function (query) {
   var sql_string = "";
-  if(!query.isArray) {
-    query = [query];
-  }
   for (var index = 0; index < query.length; index++) {
     // each element in the array is part of OR logic
     sql_string += "(";
