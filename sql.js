@@ -1,7 +1,7 @@
 /*
 
   jSQL - JavaScript/JSON to MySQL Bridge
-   Version: 0.2 (Preliminary)
+   Version: 1.0 (Preliminary)
    Date: 11/2012
 
  WARNING - USE AT YOUR OWN RISK
@@ -117,6 +117,9 @@ SQL.prototype.table = function(table) {
 
 var JSON2SQL = function (query) {
   var sql_string = "";
+  if(!query.isArray) {
+    query = [query];
+  }
   for (var index = 0; index < query.length; index++) {
     // each element in the array is part of OR logic
     sql_string += "(";
@@ -173,13 +176,14 @@ var JSON2SQL = function (query) {
 */
 
 var SQL_set = function (obj) {
-  var sql = "";
+  var sql_string = "";
   var value = "";
   for(var element in obj) {
-    sql += "\"" + element + "\"=";
+    sql_string += element + "=";
     value = typeof obj[element] == "string" ? "\"" + obj[element] + "\" " : obj[element].toString() + " ";
-    sql += value;
+    sql_string += value;
   }
+  return sql_string;
 }
 
 // http://dev.mysql.com/doc/refman/5.6/en/select.html
