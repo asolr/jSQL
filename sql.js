@@ -1,7 +1,8 @@
 /*
 
   jSQL - JavaScript/JSON to MySQL Bridge
-  VERSION 0.2 (Preliminary)
+   Version: 0.2 (Preliminary)
+   Date: 11/2012
 
  WARNING - USE AT YOUR OWN RISK
  
@@ -117,6 +118,7 @@ SQL.prototype.table = function(table) {
 var JSON2SQL = function (query) {
   var sql_string = "";
   for (var index = 0; index < query.length; index++) {
+    // each element in the array is part of OR logic
     sql_string += "(";
     var obj_size = 0;
     for (var size in query[index]){ // unfortunatly we need to count the objects first
@@ -124,10 +126,11 @@ var JSON2SQL = function (query) {
     }
     var count = 0;
     for (var field in query[index]) {
+    // each element in the object is part of the same AND logic
       var data = query[index][field];
+      count++;
       if(typeof data == "string" || typeof data == "number") { // AND LOGIC (single element) / BUG with ["single"] 
         var element = typeof data == "string" ? "\"" + data + "\"" : data.toString();
-        count++;
         if(count == obj_size){
           sql_string += field + " = " + element;
         }
@@ -147,7 +150,12 @@ var JSON2SQL = function (query) {
               sql_string += field + " = " + element + " OR ";
             }
         }
-        sql_string += ")";
+        if(count == obj_size) {
+          sql_string += ") "; // last object in that OR block
+        } 
+        else {
+          sql_string += ") AND "; // there are still other objects
+        }
       }
     }
     if(index+1 == query.length) {
