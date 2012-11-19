@@ -1,7 +1,7 @@
 /*
 
   jSQL - JavaScript/JSON to MySQL Bridge
-   Version: 1.0 (Preliminary)
+   Version: 1.5 (Preliminary)
    Date: 11/2012
 
  WARNING - USE AT YOUR OWN RISK
@@ -36,13 +36,13 @@ SELECT * FROM table WHERE help = 1 AND days <= 30 AND days != 36
 
 JSON Example:
   var db = new SQL({username : username, password : password, hostname : hostname, database : database, fetch : fetch});
-  db.table(document.getElementById("table").value); // table name
+  db.table = document.getElementById("table").value; // table name
   var result = db.select(query, function(reply) {
     document.getElementById("output").innerHTML = (JSON.stringify(reply));
   });
 
 SQL Example:
-  var db = new SQL(connection);
+  var db = new SQL(login);
   var query = "SELECT * FROM iDirectory.Employee WHERE (FirstName = \"Andy\" AND LastName = \"Mandin\") OR (FirstName = \"Jeffory\") OR (FirstName = \"Richord\")";
   var result = db.query(query, function(reply) {
     document.getElementById("output").innerHTML = (JSON.stringify(reply));
@@ -51,15 +51,24 @@ SQL Example:
 */
 
 function SQL(login) {
+  if(login == null){
+    // default values
+    login = { username : "", 
+              password : "", 
+              hostname : "localhost", 
+              database : "", 
+              fetch : "object"};
+  }
+  this.table = null; // the table you want to select
   this.login = login;
 }
 
 SQL.prototype.query = function (query, callback) {
-  SQLrequest(query, this.login, callback);
+  SQLHttpRequest(query, this.login, callback);
 }
 
-// POST REQUEST ONLY / GET REQUEST in the FUTURE
-function SQLrequest (query, login, callback) {
+// SQLHttpRequest Post Request 
+function SQLHttpRequest (query, login, callback) {
   var json = false; // TODO?
   var http;
   var uri = "sql.php";
@@ -76,17 +85,17 @@ function SQLrequest (query, login, callback) {
     }
   if(query != null){
     http.open("POST", uri, true); // async == true
-    if(json) { // TODO
+    if(json) { // TODO - Experimental Future Code (for now urlencoded requests are maybe faster then JSON)
       var post = "{"; // start of json
-      for (index in login){
-        post += index + ":\"" + encodeURIComponent(login[index]) + "\","; //encodeURIComponent(login[index]);
+      for (var index in login){
+        post += index + ":\"" + encodeURIComponent(login[index]) + "\",";
       }
       post += "query:\"" + encodeURIComponent(query) + "\"";
       post += "}"; // end of json
     } 
-    else {
+    else { // POST Request to the URI using encodeURIComponent(query/login)
       var post = "";
-      for (index in login){
+      for (var index in login){ // TODO - double encrypt the login info
         post += index + "=" + encodeURIComponent(login[index]) + "&";
       }
       post += "query=" + encodeURIComponent(query);
@@ -102,21 +111,7 @@ function SQLrequest (query, login, callback) {
   }
 }
 
-/*
-http://dev.mysql.com/doc/refman/5.6/en/select.html
-*/
-
-SQL.prototype.table = function(table) {
-  this.table = table;
-}
-
-/*
-  This function is used to create the WHERE clause for the SQL query
-  BUG: [{"FirstName" : ["a", "b", "c", "d"], "LastName" : "f"}]
-*/
-
-// NOTE the query must be [{},...] not {}
-var JSON2SQL = function (query) {
+var SQL_WHERE = function (query) {
   var sql_string = "";
   for (var index = 0; index < query.length; index++) {
     // each element in the array is part of OR logic
@@ -133,10 +128,10 @@ var JSON2SQL = function (query) {
       if(typeof data == "string" || typeof data == "number") { // AND LOGIC (single element) / BUG with ["single"] 
         var element = typeof data == "string" ? "\"" + data + "\"" : data.toString();
         if(count == obj_size){
-          sql_string += field + " = " + element;
+          sql_string += field + "=" + element;
         }
         else {
-          sql_string += field + " = " + element + " AND ";
+          sql_string += field + "=" + element + " AND ";
         }
       } 
       else { // OR LOGIC (multiple elements)
@@ -145,10 +140,10 @@ var JSON2SQL = function (query) {
           var data = query[index][field][findex];
           var element = typeof data == "string" ? "\"" + data + "\"" : data.toString();
             if(findex+1 == query[index][field].length) {
-              sql_string += field + " = " + element; // last element
+              sql_string += field + "=" + element; // last element
             } 
             else {
-              sql_string += field + " = " + element + " OR ";
+              sql_string += field + "=" + element + " OR ";
             }
         }
         if(count == obj_size) {
@@ -169,11 +164,7 @@ var JSON2SQL = function (query) {
   return sql_string;
 };
 
-/*
-  takes in an object and creates a string to be parsed by SQL
-*/
-
-var SQL_set = function (obj) {
+var SQL_FIELDS = function (obj) {
   var sql_string = "";
   var value = "";
   for(var element in obj) {
@@ -185,43 +176,62 @@ var SQL_set = function (obj) {
 }
 
 // http://dev.mysql.com/doc/refman/5.6/en/select.html
-// NOTE: SQL.select = SQL.find
-SQL.prototype.find = function(query, callback){
+SQL.prototype.select = function(query, callback){
   var sql_string = "";
-  var fields = null;
-  if(fields == null) { // select all by default
-    sql_string = "SELECT * FROM " + this.table + " WHERE " + JSON2SQL(query);
-  }
+  if(query){
+    sql_string = "SELECT * FROM " + this.table + " WHERE " + SQL_WHERE(query);
+  } 
   else {
-    var selectors = "SELECT ";
-    for(var index = 0; index < fields.length; index++){
-      selectors += "\"" + fields[index] + "\" ";
-    }
-    sql_string = selectors + "FROM " + this.table + " WHERE " + JSON2SQL(query);
+    sql_string = "SELECT * FROM " + this.table;
   }
-  SQLrequest(sql_string, this.login, callback);
+  SQLHttpRequest(sql_string, this.login, callback);
 };
 
-SQL.prototype.select = SQL.prototype.find;
+SQL.prototype.find = SQL.prototype.select;
 
 // http://dev.mysql.com/doc/refman/5.6/en/update.html
 SQL.prototype.update = function(fields, where, callback) {
   var sql_string = "";
-  sql_string += "UPDATE " + this.table + " SET " + SQL_set(fields) + "WHERE " + JSON2SQL(where);
-  SQLrequest(sql_string, this.login, callback);
+  sql_string += "UPDATE " + this.table + " SET " + SQL_FIELDS(fields) + "WHERE " + SQL_WHERE(where);
+  SQLHttpRequest(sql_string, this.login, callback);
 };
 
 // http://dev.mysql.com/doc/refman/5.6/en/insert.html
 SQL.prototype.insert = function(fields, callback) {
   var sql_string = "";
   sql_string += "INSERT INTO " + this.table + " SET " + SQL_set(fields);
-  SQLrequest(sql_string, this.login, callback);
+  SQLHttpRequest(sql_string, this.login, callback);
 };
 
 // http://dev.mysql.com/doc/refman/5.6/en/delete.html
-// WARNING
 SQL.prototype.delete = function(query, callback) {
   var sql_string = "";
-  sql_string += "DELETE FROM " + this.table + " WHERE " + JSON2SQL(query);
-  SQLrequest(sql_string, this.login, callback);
+  sql_string += "DELETE FROM " + this.table + " WHERE " + SQL_WHERE(query);
+  SQLHttpRequest(sql_string, this.login, callback);
+};
+
+// http://www.php.net/manual/en/function.mysql-list-fields.php
+// Displays each column title in the table 
+SQL.prototype.columns = function(table, callback) {
+  var sql_string = "";
+  sql_string += "SHOW COLUMNS FROM " + table;// + " WHERE " + SQL_WHERE(query);
+  SQLHttpRequest(sql_string, this.login, callback);
+};
+
+SQL.prototype.fields = SQL.prototype.columns;
+SQL.prototype.titles = SQL.prototype.columns;
+
+// http://www.php.net/manual/en/function.mysql-list-tables.php
+// Displays the tables in a database
+SQL.prototype.tables = function(table, callback) {
+  var sql_string = "";
+  sql_string += "SHOW TABLES FROM " + table;// + " WHERE " + SQL_WHERE(query);
+  SQLHttpRequest(sql_string, this.login, callback);
+};
+
+// http://www.php.net/manual/en/function.mysql-list-tables.php
+SQL.prototype.dbs = function(callback) {
+  var sql_string = "";
+  sql_string += "SHOW DATABASES";// + " WHERE " + SQL_WHERE(query);
+  SQLHttpRequest(sql_string, this.login, callback);
 };
