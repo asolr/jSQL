@@ -2,10 +2,15 @@
 
 /*
   jSQL - JavaScript/JSON to MySQL Bridge
-   Version: 2.0 
+   Version: 3.5 (MySQLi Version)
+   Requres: PHP Version 5 & MYSQLi
    Date: 11/2012   
-   Returns a JSON object {data : "", change : ""} or if an error {error : "", query : ""}
-         NOTE: The default login values in JavaScript have the override.   
+   Return: a JSON object {data : ""} or if an error {error : ""}
+   
+   Note: The default login values in JavaScript have the override over PHP.
+   
+   Note: Future version should support persistance with JavaScript
+      
 */
 
 // Default MySQL Login Values
@@ -13,7 +18,7 @@ $login['username'] = "username";
 $login['password'] = "password";
 $login['hostname'] = "localhost";
 $login['database'] = ""; 
-$login['fetch'] = "object"; // mysql_fetch_array() | mysql_fetch_row() | mysql_fetch_object() 
+$login['fetch'] = "assoc"; // array || assoc || row ||object
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') { // POST REQUEST
   if(isset($_POST['username'])){
@@ -60,7 +65,7 @@ class jSQL {
     private $password;
     private $host;
     private $connection;
-    public $database;
+    private $database;
     public $sql;
     public $fetch;
     public $result;
@@ -72,59 +77,55 @@ class jSQL {
     $this->password = $config['password'];
     $this->host = $config['host'];
     $this->database = $config['database'];
-    $this->fetch = $config['fetch']; // mysql_fetch_(array|row|assoc|object)
-    if(!($this->connection = mysql_connect($this->host, $this->username, $this->password))){
-      mysql_close($this->connection);
-    }
+    $this->fetch = $config['fetch']; 
+    $this->connection = new mysqli($this->host, $this->username, $this->password, $this->database);
   }
     
   public function query($sql) {
-    mysql_select_db($this->database, $this->connection); // maybe should be a good idea to have a check if null
-		if(!($this->result = mysql_query($sql, $this->connection))) {
-      $this->reply['error'] = "mysql_errno(" . mysql_errno() . ")";
-      $this->reply['query'] = "mysql_query(" . $sql . ")";
-    } 
-    if($this->result) {
+    if($this->result = $this->connection->query($sql)) {
       if(strpos($sql, "SHOW") !== false) { // ["SHOW TABLES FROM", "SHOW DATABASES", "SHOW COLUMNS FROM"]
-        while ($row = mysql_fetch_row($this->result)) {
-          array_push($this->json, $row[0]);
-        }
+        array_push($this->json, $this->result->fetch_array(MYSQLI_NUM));
       }
       else {
         switch($this->fetch) {
           case "array":
-            while ($row = mysql_fetch_array($this->result, MYSQL_NUM)) {
+            while ($row = $this->result->fetch_array(MYSQLI_NUM)) {
               array_push($this->json, $row);
             }
           break;
           case "assoc":
-            while ($row = mysql_fetch_array($this->result, MYSQL_ASSOC)) {
+            while ($row = $this->result->fetch_array(MYSQLI_ASSOC)) {
               array_push($this->json, $row);
             }
           break;
           case "row":
-            while ($row = mysql_fetch_row($this->result)) {
+            while ($row = $this->result->fetch_row()) {
               array_push($this->json, $row);
             }
           break;
           case "object":
-            while ($row = mysql_fetch_object($this->result)) {
+            while ($row = $this->result->fetch_object()) {
               array_push($this->json, $row);
             }
           break;
-          default: 
-            while ($row = mysql_fetch_object($this->result)) {
+          default: // assoc
+            while ($row = $this->result->fetch_array(MYSQLI_ASSOC)) {
               array_push($this->json, $row);
             }
-        }
+          }
       }
     }
-    mysql_free_result($this->result); 
-    mysql_close($this->connection);
-    $this->reply['change'] = mysql_affected_rows();
+    else { // Return a MySQL error because the query wasn't successful.
+      $this->reply['error'] = "MySQL Error " . mysqli_connect_errno() . " " . mysqli_connect_error();
+      $this->reply['query'] = $sql . "";
+      return json_encode($this->reply);
+    }
+    // Everything was succesful now we return the JSON reply packet
     $this->reply['data'] = $this->json;
+    $this->result->close(); // free the result
+    $this->connection->close(); // close the connection
     return json_encode($this->reply);
-	}
+  }
 }
 
 ?>
