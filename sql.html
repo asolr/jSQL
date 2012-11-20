@@ -51,7 +51,7 @@ function JSONQuery() {
       });
     break;
     case "delete":
-      var result = db.select(query, function(reply) {
+      var result = db.delete(query, function(reply) {
         document.getElementById("output").innerHTML = (JSON.stringify(reply));
       });
     break;
