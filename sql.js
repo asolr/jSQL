@@ -281,7 +281,7 @@ SQL.prototype.create = {
 		var sql_string = "";
 		sql_string += "CREATE DATABASE " + db;
 		SQLHttpRequest(sql_string, this.login, callback);},
-  table : function(table, fields, callback) {
+  	table : function(table, fields, callback) {
 		var sql_string = "";
 		sql_string += "CREATE TABLE " + db + "(" + SQL_DATATYPE(fields) + ")";
 		SQLHttpRequest(sql_string, this.login, callback);}
