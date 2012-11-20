@@ -1,10 +1,8 @@
 /*
 
   jSQL - JavaScript/JSON to MySQL Bridge
-   Version: 1.5 (Preliminary)
+   Version: 3.5 (MySQLi & MySQL)
    Date: 11/2012
-
- WARNING - USE AT YOUR OWN RISK
  
   NOTE: Requires SSL/HTTPS/ENCRYPTION (a future version should encrypt the login info)
   
@@ -113,6 +111,9 @@ function SQLHttpRequest (query, login, callback) {
 
 var SQL_WHERE = function (query) {
   var sql_string = "";
+  if(query[0] === undefined) {
+    query = [query];
+  }
   for (var index = 0; index < query.length; index++) {
     // each element in the array is part of OR logic
     sql_string += "(";
