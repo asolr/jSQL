@@ -2,7 +2,7 @@
 
 /*
   jSQL - JavaScript/JSON to MySQL Bridge
-   Version: 3.5 (MySQLi Version)
+   Version: 3.8 (MySQLi Version)
    Requres: PHP Version 5 & MYSQLi
    Date: 11/2012   
    Return: a JSON object {data : "", items : "# of affected rows"} or if an error {error : ""}
@@ -88,7 +88,7 @@ class jSQL {
     if($this->result = $this->mysqli->query($sql)) {
       if(strpos($sql, "SHOW") !== false) { // ["SHOW TABLES FROM", "SHOW DATABASES", "SHOW COLUMNS FROM"]
         while ($row = $this->result->fetch_array(MYSQLI_NUM)) {
-          array_push($this->json, $row);
+          array_push($this->json, $row[0]);
         }
       }
       else {
