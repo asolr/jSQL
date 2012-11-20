@@ -2,10 +2,10 @@
 
 /*
   jSQL - JavaScript/JSON to MySQL Bridge
-   Version: 1.0 (Preliminary)
-   Date: 11/2012
-   
-   NOTE: The default login values in JavaScript have the override.
+   Version: 2.0 
+   Date: 11/2012   
+   Returns a JSON object {data : "", change : ""} or if an error {error : "", query : ""}
+         NOTE: The default login values in JavaScript have the override.   
 */
 
 // Default MySQL Login Values
@@ -64,7 +64,8 @@ class jSQL {
     public $sql;
     public $fetch;
     public $result;
-    private $json;
+    public $reply;
+    private $json = array();
   
   function __construct($config) {
     $this->username = $config['username'];
@@ -80,60 +81,49 @@ class jSQL {
   public function query($sql) {
     mysql_select_db($this->database, $this->connection); // maybe should be a good idea to have a check if null
 		if(!($this->result = mysql_query($sql, $this->connection))) {
-      $this->json = "[{\"Error\" : \" mysql_errno() " . mysql_errno() . " " . preg_replace('/["\']/', '', mysql_error()) . "\", \"Query\" : \"mysql_query()" . preg_replace('/["\']/', '', $sql) . "\"}]";
+      $this->reply['error'] = "mysql_errno(" . mysql_errno() . ")";
+      $this->reply['query'] = "mysql_query(" . $sql . ")";
     } 
     if($this->result) {
-      $this->json = "[";
-      $index = 0;
       if(strpos($sql, "SHOW") !== false) { // ["SHOW TABLES FROM", "SHOW DATABASES", "SHOW COLUMNS FROM"]
         while ($row = mysql_fetch_row($this->result)) {
-          $this->json .= json_encode($row[0]) . ",";
-          $index++;
+          array_push($this->json, $row[0]);
         }
       }
       else {
         switch($this->fetch) {
           case "array":
             while ($row = mysql_fetch_array($this->result, MYSQL_NUM)) {
-              $this->json .= json_encode($row) . ",";
-              $index++;
+              array_push($this->json, $row);
             }
           break;
           case "assoc":
             while ($row = mysql_fetch_array($this->result, MYSQL_ASSOC)) {
-              $this->json .= json_encode($row) . ",";
-              $index++;
+              array_push($this->json, $row);
             }
           break;
           case "row":
             while ($row = mysql_fetch_row($this->result)) {
-              $this->json .= json_encode($row) . ",";
-              $index++;
+              array_push($this->json, $row);
             }
           break;
           case "object":
             while ($row = mysql_fetch_object($this->result)) {
-              $this->json .= json_encode($row) . ",";
-              $index++;
+              array_push($this->json, $row);
             }
           break;
           default: 
             while ($row = mysql_fetch_object($this->result)) {
-              $this->json .= json_encode($row) . ",";
-              $index++;
+              array_push($this->json, $row);
             }
         }
       }
-      if (strlen($this->json) > 1){
-        $this->json[strlen($this->json)-1] = "]"; // be careful about removing space or ,
-      }
-      else {
-        $this->json .= mysql_affected_rows() . "]"; 
-      } 
     }
     mysql_free_result($this->result); 
     mysql_close($this->connection);
-    return $this->json;
+    $this->reply['change'] = mysql_affected_rows();
+    $this->reply['data'] = $this->json;
+    return json_encode($this->reply);
 	}
 }
 
