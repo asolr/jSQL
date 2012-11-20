@@ -84,7 +84,9 @@ class jSQL {
   public function query($sql) {
     if($this->result = $this->connection->query($sql)) {
       if(strpos($sql, "SHOW") !== false) { // ["SHOW TABLES FROM", "SHOW DATABASES", "SHOW COLUMNS FROM"]
-        array_push($this->json, $this->result->fetch_array(MYSQLI_NUM));
+        while ($row = $this->result->fetch_array(MYSQLI_NUM)) {
+          array_push($this->json, $row);
+        }
       }
       else {
         switch($this->fetch) {
