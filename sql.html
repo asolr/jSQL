@@ -1,0 +1,108 @@
+<html>
+<head>
+<script type="text/javascript" charset="utf-8" src="sql.js"></script>
+</head>
+<body>
+<h1>MySQL JavaScript Bridge</h1>
+Username: <input type="text" name="username" id="username"/><br />
+Password: <input type="password" name="password" id="password"/><br />
+Hostname: <input type="text" name="hostname" id="hostname" value="localhost"/><br />
+<!-- Database: <input type="text" name="database" id="database"/><br />-->
+Fetch: <input type="text" name="fetch" id="fetch" value="object"/>(array | assoc | row | object)<br /> 
+
+<script>
+
+function SQLQuery() {
+  var login = { username : document.getElementById("username").value, 
+                password : document.getElementById("password").value, 
+                hostname : document.getElementById("hostname").value,
+                database : "",//document.getElementById("database").value, 
+                fetch : document.getElementById("fetch").value};
+  var query = document.getElementById("sqlqueryid").value;
+  var db = new SQL(login);
+  var result = db.query(query, function(reply) {
+    document.getElementById("output").innerHTML = (JSON.stringify(reply));
+  });
+}
+
+function JSONQuery() {
+  var login = { username : document.getElementById("username").value, 
+                password : document.getElementById("password").value, 
+                hostname : document.getElementById("hostname").value,
+                database : "",//document.getElementById("database").value, 
+                fetch : document.getElementById("fetch").value};
+  var query = (document.getElementById("jsonqueryid").value);
+  query = query != "" ? JSON.parse(query) : "";
+  var fields = document.getElementById("fields").value;
+  fields = fields != "" ? JSON.parse(fields) : "";
+  var db = new SQL(login);
+  var table = document.getElementById("table").value;
+  db.table = table;
+  var type = document.getElementById("type").value;
+  switch(type) {
+    case "insert":
+      var result = db.insert(fields, function(reply) {
+        document.getElementById("output").innerHTML = (JSON.stringify(reply));
+      });
+    break;
+    case "update":
+      var result = db.update(fields, query, function(reply) {
+        document.getElementById("output").innerHTML = (JSON.stringify(reply));
+      });
+    break;
+    case "delete":
+      var result = db.select(query, function(reply) {
+        document.getElementById("output").innerHTML = (JSON.stringify(reply));
+      });
+    break;
+    case "fields":
+      var result = db.fields(table, function(reply) {
+        document.getElementById("output").innerHTML = (JSON.stringify(reply));
+      });
+    break;
+    case "tables":
+      var result = db.tables(table, function(reply) {
+        document.getElementById("output").innerHTML = (JSON.stringify(reply));
+      });
+    break;
+    case "dbs":
+      var result = db.dbs(function(reply) {
+        document.getElementById("output").innerHTML = (JSON.stringify(reply));
+      });
+    break;
+    default: // select | find
+      var result = db.find(query, function(reply) {
+        document.getElementById("output").innerHTML = (JSON.stringify(reply));
+      });      
+  }
+}
+
+function update(text) {
+  var content = document.getElementById("content");
+  var table = new CSV(text);
+  content.innerHTML = XML(table);
+}
+
+function clicker() {
+  var fileObj = document.getElementById("files");
+  var fp = new File(fileObj);
+  fp.read(update);
+}
+
+</script>
+
+   <h3>SQL Query:</h3>
+   <textarea name="query" id="sqlqueryid" rows="4" cols="100"></textarea><br />
+   <button type="button" id="submit" onclick="SQLQuery()">Submit</button>
+   <h3>JSON SQL Query:</h3>
+   Table: <input type="text" name="table" id="table"/> <br />
+   Fields {}: <input type="text" name="fields" id="fields"/><br />
+   Type: <input type="text" name="type" id="type"/>select | insert | update | delete | fields | tables | dbs<br />
+   <textarea name="query" id="jsonqueryid" rows="4" cols="100"></textarea><br />
+   <button type="button" id="submit" onclick="JSONQuery()">Submit</button>
+   <div><h3>MySQL Query Results:</h3></div>
+   <div id="output"></div>
+   <div id="content"></div>
+   
+</body>
+</html>
