@@ -2,7 +2,7 @@
 
 /*
   jSQL - JavaScript/JSON to MySQL Bridge
-   Version: 3.8 (MySQLi Version)
+   Version: 3.5 (MySQLi Version)
    Requres: PHP Version 5 & MYSQLi
    Date: 11/2012   
    Return: a JSON object {data : "", items : "# of affected rows"} or if an error {error : ""}
@@ -85,11 +85,17 @@ class jSQL {
   }
 
   public function query($sql) {
-    if($this->result = $this->mysqli->query($sql)) {
-      if(strpos($sql, "SHOW") !== false) { // ["SHOW TABLES FROM", "SHOW DATABASES", "SHOW COLUMNS FROM"]
+    $sql = ltrim($sql, ' '); // trim the leading white space (maybe remove tabs?)
+    if($this->result = mysqli_query($this->mysqli, $sql)) { // BUG: SHOW as a field
+      if(strtoupper(substr($sql,0,4)) == "SHOW") { // ["SHOW TABLES FROM", "SHOW DATABASES", "SHOW COLUMNS FROM"]
         while ($row = $this->result->fetch_array(MYSQLI_NUM)) {
           array_push($this->json, $row[0]);
         }
+      }
+      elseif (strtoupper(substr($sql,0,6)) == "UPDATE") {
+        $this->reply['data'] = array();
+        $this->reply['items'] = mysqli_affected_rows($this->mysqli);
+        return json_encode($this->reply);
       }
       else {
         switch($this->fetch) {
@@ -111,7 +117,7 @@ class jSQL {
           case "object":
             while ($row = $this->result->fetch_object()) {
               array_push($this->json, $row);
-            }
+            }                    
           break;
           default: // assoc
             while ($row = $this->result->fetch_array(MYSQLI_ASSOC)) {
