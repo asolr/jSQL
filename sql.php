@@ -62,26 +62,30 @@ class jSQL {
   
     private $username;
     private $password;
-    private $host;
-    private $connection;
-    private $database;
-    public $sql;
-    public $fetch;
-    public $result;
-    public $reply;
-    private $json = array();
+    private $host; // where the MySQL server is located
+    private $database; // the name of the table / database you want to connect to
+    private $mysqli; // the link to the database connection
+    public $sql; // query text
+    public $fetch; // type of fetch
+    public $result; // result object
+    public $reply; // reply string
+    private $json = array(); // data from the query to be changed to json format
   
   function __construct($config) {
     $this->username = $config['username'];
     $this->password = $config['password'];
     $this->host = $config['host'];
     $this->database = $config['database'];
+    $this->conn = $config['table'];
     $this->fetch = $config['fetch']; 
-    $this->connection = new mysqli($this->host, $this->username, $this->password, $this->database);
+    $this->mysqli = new mysqli($this->host, $this->username, $this->password, $this->database);
+    if(mysqli_connect_errno()){
+      $this->reply['error'] = "MySQL Connection Error " . mysqli_connect_errno() . " " . mysqli_connect_error();
+    }
   }
-    
+
   public function query($sql) {
-    if($this->result = $this->connection->query($sql)) {
+    if($this->result = $this->mysqli->query($sql)) {
       if(strpos($sql, "SHOW") !== false) { // ["SHOW TABLES FROM", "SHOW DATABASES", "SHOW COLUMNS FROM"]
         while ($row = $this->result->fetch_array(MYSQLI_NUM)) {
           array_push($this->json, $row);
@@ -116,16 +120,20 @@ class jSQL {
           }
       }
     }
-    else { // Return a MySQL error because the query wasn't successful.
-      $this->reply['error'] = "MySQL Error " . mysqli_connect_errno() . " " . mysqli_connect_error();
-      $this->reply['query'] = $sql . "";
+    else { // empty results
+      $this->reply['data'] = array();
+      $this->reply['items'] = 0;
+      if(mysqli_errno($this->mysqli)) {
+        $this->reply['error'] = "MySQL Query Error " . mysqli_errno($this->mysqli) . " " . mysqli_error($this->mysqli);
+        $this->reply['query'] = $sql;
+      }
       return json_encode($this->reply);
     }
     // Everything was succesful now we return the JSON reply packet
     $this->reply['data'] = $this->json;
-    $this->reply['items'] = mysqli_affected_rows($this->connection);
+    $this->reply['items'] = mysqli_affected_rows($this->mysqli);
     $this->result->close(); // free the result
-    $this->connection->close(); // close the connection
+    $this->mysqli->close(); // close the connection
     return json_encode($this->reply);
   }
 }
