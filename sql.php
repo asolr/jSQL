@@ -2,7 +2,7 @@
 
 /*
   jSQL - JavaScript/JSON to MySQL Bridge
-   Version: 3.5 (MySQLi Version)
+   Version: 4.5 (MySQLi Version)
    Requres: PHP Version 5 & MYSQLi
    Date: 11/2012   
    Return: a JSON object {data : "", items : "# of affected rows"} or if an error {error : ""}
@@ -86,13 +86,15 @@ class jSQL {
 
   public function query($sql) {
     $sql = ltrim($sql, ' '); // trim the leading white space (maybe remove tabs?)
-    if($this->result = mysqli_query($this->mysqli, $sql)) { // BUG: SHOW as a field
+    $this->result = mysqli_query($this->mysqli, $sql);
+    if($this->result) { 
+      $type = strtoupper(substr($sql,0,6));
       if(strtoupper(substr($sql,0,4)) == "SHOW") { // ["SHOW TABLES FROM", "SHOW DATABASES", "SHOW COLUMNS FROM"]
         while ($row = $this->result->fetch_array(MYSQLI_NUM)) {
           array_push($this->json, $row[0]);
         }
       }
-      elseif (strtoupper(substr($sql,0,6)) == "UPDATE") {
+      elseif ($type == "UPDATE" || $type == "INSERT" || $type == "DELETE") {
         $this->reply['data'] = array();
         $this->reply['items'] = mysqli_affected_rows($this->mysqli);
         return json_encode($this->reply);
@@ -138,8 +140,8 @@ class jSQL {
     // Everything was succesful now we return the JSON reply packet
     $this->reply['data'] = $this->json;
     $this->reply['items'] = mysqli_affected_rows($this->mysqli);
-    $this->result->close(); // free the result
-    $this->mysqli->close(); // close the connection
+    mysqli_free_result($this->result); // free the result
+    mysqli_close($this->mysqli); // close the connection
     return json_encode($this->reply);
   }
 }
