@@ -5,12 +5,11 @@
    Version: 3.5 (MySQLi Version)
    Requres: PHP Version 5 & MYSQLi
    Date: 11/2012   
-   Return: a JSON object {data : ""} or if an error {error : ""}
+   Return: a JSON object {data : "", items : "# of affected rows"} or if an error {error : ""}
    
    Note: The default login values in JavaScript have the override over PHP.
    
    Note: Future version should support persistance with JavaScript
-      
 */
 
 // Default MySQL Login Values
@@ -124,6 +123,7 @@ class jSQL {
     }
     // Everything was succesful now we return the JSON reply packet
     $this->reply['data'] = $this->json;
+    $this->reply['items'] = mysqli_affected_rows($this->connection);
     $this->result->close(); // free the result
     $this->connection->close(); // close the connection
     return json_encode($this->reply);
