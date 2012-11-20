@@ -1,7 +1,7 @@
 /*
 
   jSQL - JavaScript/JSON to MySQL Bridge
-   Version: 3.5 (MySQLi & MySQL)
+   Version: 4.5 (MySQLi & MySQL)
    Date: 11/2012
  
   NOTE: Requires SSL/HTTPS/ENCRYPTION (a future version should encrypt the login info)
@@ -200,7 +200,7 @@ SQL.prototype.update = function(fields, where, callback) {
 // http://dev.mysql.com/doc/refman/5.6/en/insert.html
 SQL.prototype.insert = function(fields, callback) {
   var sql_string = "";
-  sql_string += "INSERT INTO " + this.table + " SET " + SQL_set(fields);
+  sql_string += "INSERT INTO " + this.table + " SET " + SQL_FIELDS(fields);
   SQLHttpRequest(sql_string, this.login, callback);
 };
 
