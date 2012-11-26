@@ -66,7 +66,7 @@ SQL.prototype.query = function (query, callback) {
 }
 
 // SQLHttpRequest Post Request 
-function SQLHttpRequest (query, login, callback) {
+function SQLHttpRequest (query, login, callback, async) {
   var json = false; // TODO?
   var http;
   var uri = "sql.php";
@@ -82,7 +82,7 @@ function SQLHttpRequest (query, login, callback) {
       }
     }
   if(query != null){
-    http.open("POST", uri, true); // async == true
+    async == null ? http.open("POST", uri, true) : http.open("POST", uri, async); // async == true
     if(json) { // TODO - Experimental Future Code (for now urlencoded requests are maybe faster then JSON)
       var post = "{"; // start of json
       for (var index in login){
@@ -106,6 +106,7 @@ function SQLHttpRequest (query, login, callback) {
     http.setRequestHeader("Content-length", post.length);
     http.setRequestHeader("Connection", "close");
     http.send(post);
+    return JSON.parse(http.response);
   }
 }
 
@@ -234,6 +235,27 @@ SQL.prototype.tables = function(table, callback) {
 SQL.prototype.dbs = function(callback) {
   var sql_string = "";
   sql_string += "SHOW DATABASES";// + " WHERE " + SQL_WHERE(query);
+  if(callback == null){ // used to check login info only
+    return SQLHttpRequest(sql_string, this.login, callback, false);
+  } 
+  else {
+    SQLHttpRequest(sql_string, this.login, callback);
+  }
+};
+
+// http://www.php.net/manual/en/function.mysql-list-tables.php
+SQL.prototype.status = function(callback) {
+  var sql_string = "";
+  sql_string += "SHOW DATABASES";// + " WHERE " + SQL_WHERE(query);
+  if(callback == null){ // do a syncronous check of the databases tables
+    var db = SQLHttpRequest(sql_string, this.login, callback, false);
+    if(db.error) {
+      return db;
+    } 
+    else {
+      return true;
+    }
+  }
   SQLHttpRequest(sql_string, this.login, callback);
 };
 
