@@ -7,7 +7,6 @@
 Username: <input type="text" name="username" id="username"/><br />
 Password: <input type="password" name="password" id="password"/><br />
 Hostname: <input type="text" name="hostname" id="hostname" value="localhost"/><br />
-<!-- Database: <input type="text" name="database" id="database"/><br />-->
 Fetch: <input type="text" name="fetch" id="fetch" value="object"/>(array | assoc | row | object)<br /> 
 
 <script>
@@ -16,7 +15,7 @@ function SQLQuery() {
   var login = { username : document.getElementById("username").value, 
                 password : document.getElementById("password").value, 
                 hostname : document.getElementById("hostname").value,
-                database : "",//document.getElementById("database").value, 
+                database : "",// Do not use unless you know what your doing PHP wise
                 fetch : document.getElementById("fetch").value};
   var query = document.getElementById("sqlqueryid").value;
   var db = new SQL(login);
@@ -29,7 +28,7 @@ function JSONQuery() {
   var login = { username : document.getElementById("username").value, 
                 password : document.getElementById("password").value, 
                 hostname : document.getElementById("hostname").value,
-                database : "",//document.getElementById("database").value, 
+                database : "",// Do not use unless you know what your doing PHP wise
                 fetch : document.getElementById("fetch").value};
   var query = (document.getElementById("jsonqueryid").value);
   query = query != "" ? JSON.parse(query) : "";
@@ -37,21 +36,20 @@ function JSONQuery() {
   fields = fields != "" ? JSON.parse(fields) : "";
   var db = new SQL(login);
   var table = document.getElementById("table").value;
-  db.table = table;
   var type = document.getElementById("type").value;
   switch(type) {
     case "insert":
-      var result = db.insert(fields, function(reply) {
+      var result = db.insert(table, fields, function(reply) {
         document.getElementById("output").innerHTML = (JSON.stringify(reply));
       });
     break;
     case "update":
-      var result = db.update(fields, query, function(reply) {
+      var result = db.update(table, fields, query, function(reply) {
         document.getElementById("output").innerHTML = (JSON.stringify(reply));
       });
     break;
     case "delete":
-      var result = db.delete(query, function(reply) {
+      var result = db.delete(table, query, function(reply) {
         document.getElementById("output").innerHTML = (JSON.stringify(reply));
       });
     break;
@@ -70,8 +68,13 @@ function JSONQuery() {
         document.getElementById("output").innerHTML = (JSON.stringify(reply));
       });
     break;
+    case "select":
+      var result = db.select(fields, table, query, function(reply) {
+        document.getElementById("output").innerHTML = (JSON.stringify(reply));
+      }); 
+    break;
     default: // select | find
-      var result = db.find(query, function(reply) {
+      var result = db.all(table, query, function(reply) {
         document.getElementById("output").innerHTML = (JSON.stringify(reply));
       });      
   }
@@ -97,7 +100,7 @@ function clicker() {
    <h3>JSON SQL Query:</h3>
    Table: <input type="text" name="table" id="table"/> <br />
    Fields {}: <input type="text" name="fields" id="fields"/><br />
-   Type: <input type="text" name="type" id="type"/>select | insert | update | delete | fields | tables | dbs<br />
+   Type: <input type="text" name="type" id="type"/>all (select *) | select | insert | update | delete | fields | tables | dbs<br />
    <textarea name="query" id="jsonqueryid" rows="4" cols="100"></textarea><br />
    <button type="button" id="submit" onclick="JSONQuery()">Submit</button>
    <div><h3>MySQL Query Results:</h3></div>
