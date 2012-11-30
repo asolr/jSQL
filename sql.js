@@ -1,7 +1,7 @@
 /*
 
   jSQL - JavaScript/JSON to MySQL(i) Bridge
-   Version (pre) 5.0 (API Change from SQL.select(query) to SQL.select(table, query))
+   Version 5.0 (Pre)
    Date: 11/2012
  
   NOTE: Requires SSL/HTTPS/ENCRYPTION (a future version should encrypt the login info)
@@ -42,15 +42,16 @@ SQL:
 
 */
 
-/* 
-Notes on Global Default Values and Settings:
-     Remember your password is visable to EVERYONE!!! it might be better to specify it in the PHP file
-     However, if you specify something below it will over-ride php and everything else.
-*/
+function SQL_QUERY(BSON) {
+  // the BSON object should look like this... you do not need to specify this unless you want to use the SQL.query method
+  this.query = {type: "", table : "", fields : [], where : []};
+  for (var element in BSON) {
+    this.query[element] = BSON[element];
+  }
+}
 
 function SQL(login) {
   if(login == null){
-    // DEFAULT VALUES
     login = { username : "", // its better to pass this in as a variable
               password : "", // remember the passwords are not encrypted unless your connection is
               hostname : "localhost",
@@ -61,11 +62,41 @@ function SQL(login) {
 }
 
 SQL.prototype.query = function (query, callback) {
-  SQLHttpRequest(query, this.login, callback);
+  var result = false;
+  if(typeof query == "string"){ // "SELECT * FROM database.table" for example
+    result = SQLHttpRequest(query, this.login, callback);
+  } 
+  else { // otherwise its a BSON SQL query (which is reformatted into a SQL string query until PHP supports full BSON)
+    switch(query.type.toLowerCase()) {
+      case "select":
+        result = this.select(query.fields, query.table, query.where, callback); 
+      break;
+      case "insert":
+        result = this.insert(query.fields, query.table, callback);
+      break;
+      case "update":
+        result = this.update(query.fields, query.table, query.where, callback);
+      break;
+      case "delete":
+        result = this.delete(query.table, query.where, callback);
+      break;
+      case "fields":
+        result = this.fields(query.table, callback);
+      break;
+      case "tables":
+        result = this.tables(query.table, callback);
+      break;
+      case "dbs":
+        result = this.dbs(callback);
+      break;
+      default: // select | find
+        result = this.all(query.table, query.where, callback);      
+    }
+  }
+  return result; // true or false and the callback will be run after the SQL query completes
 }
 
 // SQLHttpRequest Post Request
-// TODO: full binary JSON transfers using the reply packet http.responseJSON or .responseXML
 function SQLHttpRequest (query, login, callback) {
   var async;
   if(callback) {
@@ -94,7 +125,8 @@ function SQLHttpRequest (query, login, callback) {
       post += index + "=" + encodeURIComponent(login[index]) + "&";
     }
     post += "query=" + encodeURIComponent(query);
-    http.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+    http.setRequestHeader("Content-type", "application/x-www-form-urlencoded"); 
+    // TODO: full binary JSON transfers using the reply packet http.responseJSON and binary POST/GET requests
     http.setRequestHeader("Content-length", post.length);
     http.setRequestHeader("Connection", "close");
     /* NOTE: if you want to customize the POST request packet you will need to update the sql.php file otherwise 
@@ -202,10 +234,10 @@ var SQL_SELECT_FIELDS = function (fields) {
 }
 
 // http://dev.mysql.com/doc/refman/5.6/en/select.html
-SQL.prototype.all = function(table, where, callback){
+SQL.prototype.all = function(table, query, callback){
   var sql_string = "";
-  if(where){
-    sql_string = "SELECT * FROM " + table + " WHERE " + SQL_WHERE(where);
+  if(query){
+    sql_string = "SELECT * FROM " + table + " WHERE " + SQL_WHERE(query);
   } 
   else {
     sql_string = "SELECT * FROM " + table;
@@ -214,10 +246,10 @@ SQL.prototype.all = function(table, where, callback){
 };
 
 // http://dev.mysql.com/doc/refman/5.6/en/select.html
-SQL.prototype.select = function(fields, table, where, callback){
+SQL.prototype.select = function(fields, table, query, callback){
   var sql_string = "";
-  if(where){
-    sql_string = "SELECT " + SQL_SELECT_FIELDS(fields) + " FROM " + table + " WHERE " + SQL_WHERE(where);
+  if(query){
+    sql_string = "SELECT " + SQL_SELECT_FIELDS(fields) + " FROM " + table + " WHERE " + SQL_WHERE(query);
   } 
   else {
     sql_string = "SELECT " + SQL_SELECT_FIELDS(fields) + " FROM " + table;
@@ -228,9 +260,9 @@ SQL.prototype.select = function(fields, table, where, callback){
 SQL.prototype.find = SQL.prototype.select;
 
 // http://dev.mysql.com/doc/refman/5.6/en/update.html
-SQL.prototype.update = function(fields, table, where, callback) {
+SQL.prototype.update = function(fields, table, query, callback) {
   var sql_string = "";
-  sql_string += "UPDATE " + table + " SET " + SQL_SET_FIELDS(fields) + "WHERE " + SQL_WHERE(where);
+  sql_string += "UPDATE " + table + " SET " + SQL_SET_FIELDS(fields) + "WHERE " + SQL_WHERE(query);
   SQLHttpRequest(sql_string, this.login, callback);
 };
 
@@ -242,9 +274,9 @@ SQL.prototype.insert = function(fields, table, callback) {
 };
 
 // http://dev.mysql.com/doc/refman/5.6/en/delete.html
-SQL.prototype.delete = function(table, where, callback) {
+SQL.prototype.delete = function(table, query, callback) {
   var sql_string = "";
-  sql_string += "DELETE FROM " + table + " WHERE " + SQL_WHERE(where);
+  sql_string += "DELETE FROM " + table + " WHERE " + SQL_WHERE(query);
   SQLHttpRequest(sql_string, this.login, callback);
 };
 
@@ -279,7 +311,7 @@ SQL.prototype.status = function(callback) {
   var sql_string = "";
   sql_string += "SHOW DATABASES";// + " WHERE " + SQL_WHERE(query);
   if(callback == null){ // do a syncronous check of the databases tables
-    var db = SQLHttpRequest(sql_string, this.login, callback, false);
+    var db = SQLHttpRequest(sql_string, this.login);
     if(db.error) {
       return db;
     } 
