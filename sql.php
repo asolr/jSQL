@@ -2,7 +2,7 @@
 
 /*
   jSQL - JavaScript/JSON to MySQL Bridge
-   Version: (pre) 5.0 (MySQLi Version)
+   Version: 5.0 (MySQLi multi_query() Evaluation Version)
    Requres: PHP Version 5 & MYSQLi
    Date: 11/2012   
    Return: a JSON object {data : "", items : "# of affected rows"} or if an error {error : ""}
@@ -63,13 +63,11 @@ class jSQL {
     private $username;
     private $password;
     private $host; // where the MySQL server is located
-    private $database; // the name of the table / database you want to connect to
+    private $database; // please dont use this unless you have a very specific reason to use it
     private $mysqli; // the link to the database connection
     public $sql; // query text
     public $fetch; // type of fetch
-    public $result; // result object
-    public $reply; // reply string
-    private $json = array(); // data from the query to be changed to json format
+    public $reply = array(); // encoded into json format
   
   function __construct($config) {
     $this->username = $config['username'];
@@ -86,61 +84,61 @@ class jSQL {
 
   public function query($sql) {
     $sql = ltrim($sql, ' '); // trim the leading white space (maybe remove tabs?)
-    $this->result = mysqli_multi_query($this->mysqli, $sql);
-    if($this->result = mysqli_store_result($this->mysqli)) {
-      $type = strtoupper(substr($sql,0,6));
-      if(strtoupper(substr($sql,0,4)) == "SHOW") { // ["SHOW TABLES FROM", "SHOW DATABASES", "SHOW COLUMNS FROM"]
-        while ($row = $this->result->fetch_array(MYSQLI_NUM)) {
-          array_push($this->json, $row[0]);
+    mysqli_multi_query($this->mysqli, $sql);
+    do{
+      $rows['data'] = array();
+      $result = mysqli_store_result($this->mysqli);
+      if($result) {
+        $type = strtoupper(substr($sql,0,6));
+        if(strtoupper(substr($sql,0,4)) == "SHOW") { // ["SHOW TABLES FROM", "SHOW DATABASES", "SHOW COLUMNS FROM"]
+          while ($row = $result->fetch_array(MYSQLI_NUM)) {
+            array_push($rows['data'], $row[0]);
+          }
+        }
+        elseif ($type == "UPDATE" || $type == "INSERT" || $type == "DELETE") {
+          $rows['data'] = array(); 
+        }
+        else {
+          switch($this->fetch) {
+            case "array":
+              while ($row = $result->fetch_array(MYSQLI_NUM)) {
+                array_push($rows['data'], $row);
+              }
+            break;
+            case "assoc":
+              while ($row = $result->fetch_array(MYSQLI_ASSOC)) {
+                array_push($rows['data'], $row);
+              }
+            break;
+            case "row": // this will not have any column names just the values
+              while ($row = $result->fetch_row()) {
+                array_push($rows['data'], $row);
+              }
+            break;
+            case "object":
+              while ($row = $result->fetch_object()) {
+                array_push($rows['data'], $row);
+              }                    
+            break;
+            default: // assoc
+              while ($row = $result->fetch_array(MYSQLI_ASSOC)) {
+                array_push($rows['data'], $row);
+              }
+          }
+        }
+        $rows['items'] = mysqli_affected_rows($this->mysqli);        
+      }
+      else { // empty results
+        $rows['items'] = 0;
+        array_push($rows['data'], array());
+        if(mysqli_errno($this->mysqli)) {
+          $rows['error'] = "MySQL Query Error " . mysqli_errno($this->mysqli) . " " . mysqli_error($this->mysqli);
+          $rows['query'] = $sql;
         }
       }
-      elseif ($type == "UPDATE" || $type == "INSERT" || $type == "DELETE") {
-        $this->reply['data'] = array();
-        $this->reply['items'] = mysqli_affected_rows($this->mysqli);
-        return json_encode($this->reply);
-      }
-      else {
-        switch($this->fetch) {
-          case "array":
-            while ($row = $this->result->fetch_array(MYSQLI_NUM)) {
-              array_push($this->json, $row);
-            }
-          break;
-          case "assoc":
-            while ($row = $this->result->fetch_array(MYSQLI_ASSOC)) {
-              array_push($this->json, $row);
-            }
-          break;
-          case "row":
-            while ($row = $this->result->fetch_row()) {
-              array_push($this->json, $row);
-            }
-          break;
-          case "object":
-            while ($row = $this->result->fetch_object()) {
-              array_push($this->json, $row);
-            }                    
-          break;
-          default: // assoc
-            while ($row = $this->result->fetch_array(MYSQLI_ASSOC)) {
-              array_push($this->json, $row);
-            }
-          }
-      }
-    }
-    else { // empty results
-      $this->reply['data'] = array();
-      $this->reply['items'] = 0;
-      if(mysqli_errno($this->mysqli)) {
-        $this->reply['error'] = "MySQL Query Error " . mysqli_errno($this->mysqli) . " " . mysqli_error($this->mysqli);
-        $this->reply['query'] = $sql;
-      }
-      return json_encode($this->reply);
-    }
-    // Everything was succesful now we return the JSON reply packet
-    $this->reply['data'] = $this->json;
-    $this->reply['items'] = mysqli_affected_rows($this->mysqli);
-    mysqli_free_result($this->result); // free the result
+      mysqli_free_result($result); // free the result
+      array_push($this->reply, $rows);
+    } while(mysqli_next_result($this->mysqli));
     mysqli_close($this->mysqli); // close the connection
     return json_encode($this->reply);
   }
