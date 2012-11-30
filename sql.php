@@ -5,7 +5,9 @@
   jSQL - JavaScript/JSON to MySQL Bridge
    Version: 5.0 (MySQLi multi_query() Evaluation Version)
    Requres: PHP Version 5 & MYSQLi
-   Date: 11/2012   
+   Date: 11/2012
+   Help: http://www.php.net/manual/de/mysqli.multi-query.php
+   Future: http://www.php.net/manual/en/book.uodbc.php
    
    RETURN:
    [{"data" : [], "items" : 0},{"error" : "message", "query" : "SELECT * FROM DataBase.Table"},{}...]
@@ -84,21 +86,20 @@ class jSQL {
   }
 
   public function query($sql) {
-    $sql = ltrim($sql, ' '); // trim the leading white space (maybe remove tabs?)
-    mysqli_multi_query($this->mysqli, $sql);
+    $sql_query = ltrim($sql, ' '); // trim the leading white space (maybe remove tabs?)
+    mysqli_multi_query($this->mysqli, $sql_query);
     do{
       $rows['data'] = array();
       $result = mysqli_store_result($this->mysqli);
       if($result) {
-        $type = strtoupper(substr($sql,0,6));
-        if(strtoupper(substr($sql,0,4)) == "SHOW") { // ["SHOW TABLES FROM", "SHOW DATABASES", "SHOW COLUMNS FROM"]
+        $type = strtoupper(substr($sql_query,0,6));
+        if(substr($type,0,4) == "SHOW") { // ["SHOW TABLES FROM", "SHOW DATABASES", "SHOW COLUMNS FROM"]
           while ($row = $result->fetch_array(MYSQLI_NUM)) {
             array_push($rows['data'], $row[0]);
             $rows['items'] = mysqli_affected_rows($this->mysqli);
           }
         }
         elseif ($type == "UPDATE" || $type == "INSERT" || $type == "DELETE") {
-          $rows['data'] = array();
           $rows['items'] = mysqli_affected_rows($this->mysqli);
         }
         else {
@@ -128,15 +129,14 @@ class jSQL {
                 array_push($rows['data'], $row);
               }
           }
-        }
-        $rows['items'] = mysqli_affected_rows($this->mysqli);        
+        $rows['items'] = mysqli_affected_rows($this->mysqli);
+        }        
       }
       else { // empty results
-        $rows['items'] = 0;
-        $rows['data'] = array();
+        $rows['items'] = 0; 
         if(mysqli_errno($this->mysqli)) {
           $rows['error'] = "MySQL Query Error " . mysqli_errno($this->mysqli) . " " . mysqli_error($this->mysqli);
-          $rows['query'] = $sql;
+          $rows['query'] = $sql_query;
         }
       }
       mysqli_free_result($result); // free the result
