@@ -1,23 +1,24 @@
 <?php
 
 /*
+
   jSQL - JavaScript/JSON to MySQL Bridge
    Version: 5.0 (MySQLi multi_query() Evaluation Version)
    Requres: PHP Version 5 & MYSQLi
    Date: 11/2012   
-   Return: a JSON object {data : "", items : "# of affected rows"} or if an error {error : ""}
    
-   Note: The default login values in JavaScript have the override over PHP.
-   
-   Note: Future version should support persistance with JavaScript
+   RETURN:
+   [{"data" : [], "items" : 0},{"error" : "message", "query" : "SELECT * FROM DataBase.Table"},{}...]
+      
 */
 
-// Default MySQL Login Values
+// If you pass in a value from the POST/GET request they will override these otherwise these are used.  
+
 $login['username'] = "username";
 $login['password'] = "password";
 $login['hostname'] = "localhost";
 $login['database'] = ""; 
-$login['fetch'] = "assoc"; // array || assoc || row ||object
+$login['fetch'] = "assoc"; // array || assoc || row ||object (use row if you need speed)
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') { // POST REQUEST
   if(isset($_POST['username'])){
@@ -93,10 +94,12 @@ class jSQL {
         if(strtoupper(substr($sql,0,4)) == "SHOW") { // ["SHOW TABLES FROM", "SHOW DATABASES", "SHOW COLUMNS FROM"]
           while ($row = $result->fetch_array(MYSQLI_NUM)) {
             array_push($rows['data'], $row[0]);
+            $rows['items'] = mysqli_affected_rows($this->mysqli);
           }
         }
         elseif ($type == "UPDATE" || $type == "INSERT" || $type == "DELETE") {
-          $rows['data'] = array(); 
+          $rows['data'] = array();
+          $rows['items'] = mysqli_affected_rows($this->mysqli);
         }
         else {
           switch($this->fetch) {
@@ -130,7 +133,7 @@ class jSQL {
       }
       else { // empty results
         $rows['items'] = 0;
-        array_push($rows['data'], array());
+        $rows['data'] = array();
         if(mysqli_errno($this->mysqli)) {
           $rows['error'] = "MySQL Query Error " . mysqli_errno($this->mysqli) . " " . mysqli_error($this->mysqli);
           $rows['query'] = $sql;
@@ -139,9 +142,8 @@ class jSQL {
       mysqli_free_result($result); // free the result
       array_push($this->reply, $rows);
     } while(mysqli_next_result($this->mysqli));
-    mysqli_close($this->mysqli); // close the connection
+    mysqli_close($this->mysqli); // close the connection - future version should support persistance with JavaScript
     return json_encode($this->reply);
   }
 }
-
 ?>
