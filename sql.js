@@ -1,7 +1,7 @@
 /*
 
   jSQL - JavaScript/JSON to MySQL(i) Bridge
-   Version 5.0 (API Change from SQL.select(query) to SQL.select(table, query))
+   Version (pre) 5.0 (API Change from SQL.select(query) to SQL.select(table, query))
    Date: 11/2012
  
   NOTE: Requires SSL/HTTPS/ENCRYPTION (a future version should encrypt the login info)
@@ -202,10 +202,10 @@ var SQL_SELECT_FIELDS = function (fields) {
 }
 
 // http://dev.mysql.com/doc/refman/5.6/en/select.html
-SQL.prototype.all = function(table, query, callback){
+SQL.prototype.all = function(table, where, callback){
   var sql_string = "";
-  if(query){
-    sql_string = "SELECT * FROM " + table + " WHERE " + SQL_WHERE(query);
+  if(where){
+    sql_string = "SELECT * FROM " + table + " WHERE " + SQL_WHERE(where);
   } 
   else {
     sql_string = "SELECT * FROM " + table;
@@ -214,10 +214,10 @@ SQL.prototype.all = function(table, query, callback){
 };
 
 // http://dev.mysql.com/doc/refman/5.6/en/select.html
-SQL.prototype.select = function(fields, table, query, callback){
+SQL.prototype.select = function(fields, table, where, callback){
   var sql_string = "";
-  if(query){
-    sql_string = "SELECT " + SQL_SELECT_FIELDS(fields) + " FROM " + table + " WHERE " + SQL_WHERE(query);
+  if(where){
+    sql_string = "SELECT " + SQL_SELECT_FIELDS(fields) + " FROM " + table + " WHERE " + SQL_WHERE(where);
   } 
   else {
     sql_string = "SELECT " + SQL_SELECT_FIELDS(fields) + " FROM " + table;
@@ -228,23 +228,23 @@ SQL.prototype.select = function(fields, table, query, callback){
 SQL.prototype.find = SQL.prototype.select;
 
 // http://dev.mysql.com/doc/refman/5.6/en/update.html
-SQL.prototype.update = function(table, fields, where, callback) {
+SQL.prototype.update = function(fields, table, where, callback) {
   var sql_string = "";
   sql_string += "UPDATE " + table + " SET " + SQL_SET_FIELDS(fields) + "WHERE " + SQL_WHERE(where);
   SQLHttpRequest(sql_string, this.login, callback);
 };
 
 // http://dev.mysql.com/doc/refman/5.6/en/insert.html
-SQL.prototype.insert = function(table, fields, callback) {
+SQL.prototype.insert = function(fields, table, callback) {
   var sql_string = "";
   sql_string += "INSERT INTO " + table + " SET " + SQL_SET_FIELDS(fields);
   SQLHttpRequest(sql_string, this.login, callback);
 };
 
 // http://dev.mysql.com/doc/refman/5.6/en/delete.html
-SQL.prototype.delete = function(table, query, callback) {
+SQL.prototype.delete = function(table, where, callback) {
   var sql_string = "";
-  sql_string += "DELETE FROM " + table + " WHERE " + SQL_WHERE(query);
+  sql_string += "DELETE FROM " + table + " WHERE " + SQL_WHERE(where);
   SQLHttpRequest(sql_string, this.login, callback);
 };
 
