@@ -15,14 +15,13 @@ RETURN:
 
 // If you pass in a value from the POST/GET request they will override these otherwise these are used.
 $login['username'] = "earthling";//"username";
-$login['password'] = "extraterrestrial";//"password";
+$login['password'] = md5("extraterrestrial");//"password";
 $login['hostname'] = "localhost";
 $login['port'] = "5432"; // default PostgreSQL port is 5432
 $login['database'] = "orion";
 $login['status'] = TRUE; // you don't always need the status messages
 $login['options'] = "client_encoding=UTF8";
 $login['fetch'] = "assoc"; // array || assoc || row ||object (use row if you need speed)
-
 if ($_SERVER['REQUEST_METHOD'] == 'POST') { // POST REQUEST
   if(isset($_POST['username'])){
     $login['username'] = $_POST['username'];
@@ -110,7 +109,7 @@ class SQL
 
   private function connect()
   {
-    $conn_string = "host=$this->host port=$this->port dbname=$this->database user=$this->username password=$this->password options='--$this->options'";
+    $conn_string = "host=$this->host port=$this->port dbname=$this->database user=$this->username password=$this->password";
     $this->pgsql = pg_connect($conn_string) or die("PostgreSQL Connection Failed: host=$this->host port=$this->port dbname=$this->database user=$this->username");
   }
 
@@ -149,7 +148,6 @@ class SQL
         $rows['items'] = pg_affected_rows($result);
       }
       else { // query was a "SELECT"
-        /*
         switch($this->fetch) {
           case "array": // http://php.net/manual/en/function.pg-fetch-array.php
           while ($row = pg_fetch_array($result, 0, PGSQL_NUM)) {
@@ -167,7 +165,7 @@ class SQL
           }
           break;
           case "object": // http://php.net/manual/en/function.pg-fetch-object.php
-          while ($row = pg_fetch_object($result) {
+          while ($row = pg_fetch_object($result)) {
             array_push($rows['data'], $row);
           }
           break;
@@ -177,7 +175,6 @@ class SQL
           }
         }
         $rows['items'] = pg_affected_rows($result);
-        */
         echo "hi";
       }
     }
